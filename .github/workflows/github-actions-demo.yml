@@ -55,11 +55,11 @@ jobs:
         chmod 600 ssh_key.pem
         
         # EC2에 접속하여 컨테이너 업데이트 실행
-        ssh -o StrictHostKeyChecking=no -i ssh_key.pem ${EC2_USER}@${EC2_HOST} '
+        ssh -o StrictHostKeyChecking=no -i ssh_key.pem ${EC2_USER}@${EC2_HOST} << EOF
           # EC2 쉘 세션에 AWS 키 주입 후 ECR 로그인
-          export AWS_ACCESS_KEY_ID='${AWS_KEY}'
-          export AWS_SECRET_ACCESS_KEY='${AWS_SECRET}'
-          export AWS_DEFAULT_REGION='${AWS_REGION}'
+          export AWS_ACCESS_KEY_ID="${AWS_KEY}"
+          export AWS_SECRET_ACCESS_KEY="${AWS_SECRET}"
+          export AWS_DEFAULT_REGION="${AWS_REGION}"
 
           aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin 542468166994.dkr.ecr.${AWS_REGION}.amazonaws.com
           
