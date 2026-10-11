@@ -1,59 +1,42 @@
 name: Node.js CI/CD
-run-name: ${{ github.actor }} is testing and deploying the application
-on: [push]
+
+on:
+  push:
+    branches: [ master ]
+
 jobs:
-  build:
-    runs-on: ubuntu-latest # 어떤 환경(ubuntu-latest)에서 실행
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.version.outputs.version }}
+
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build
-
-      - name: Deploy to EC2
-        env:
-          AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
-          EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
-          EC2_USER: ec2-user
-        run: |
-          # 1. SSH 키 생성 및 권한 설정 (배포 스텝 내부에서 직접 수행)
-          mkdir -p ~/.ssh
-          printf '%s\n' "$AWS_SSH_KEY" > ~/.ssh/aws.key
-          chmod 600 ~/.ssh/aws.key
-
-          # 2. EC2에 대상 디렉터리 사전 생성 (누락 방지)
-          ssh -i ~/.ssh/aws.key -o StrictHostKeyChecking=no "$EC2_USER@$EC2_PUBLIC_IP" 'mkdir -p ~/ci-server'
-
-          # 3. 필요한 파일 전송 (엄격한 호스트 검사 해제 옵션 포함)
-          scp -i ~/.ssh/aws.key -o StrictHostKeyChecking=no -r \
-            dist \
-            package.json \
-            tsconfig.json \
-            tsconfig.build.json \
-            "$EC2_USER@$EC2_PUBLIC_IP:~/ci-server"
-
-          # 4. EC2 접속 후 애플리케이션 빌드 환경 구동
-          ssh -i ~/.ssh/aws.key -o StrictHostKeyChecking=no "$EC2_USER@$EC2_PUBLIC_IP" << 'ENDSSH'
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-            cd ~/ci-server
-            npm install
-            pm2 stop all || true
-            pm2 start dist/main.js --name "ci-server"
-            pm2 save
-          ENDSSH
-
-      - name: Report Status
-        if: always()
-        run: echo "This job's status is ${{ job.status }}."
+    - uses: actions/checkout@v4
+    
+    - name: Generate version
+      id: version
+      run: |
+        echo "version=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Build and push Docker image 
+      run: |
+        # buildx 설정
+        docker buildx create --name mybuilder --use
+        docker buildx inspect --bootstrap
+        
+        # 멀티 플랫폼 빌드 및 푸시
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t 542468166994.dkr.ecr.ap-southeast-2.amazonaws.com/sample-server:v2 \
+          --push .
