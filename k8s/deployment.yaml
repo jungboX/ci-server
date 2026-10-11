@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ci-server
+  labels:
+    app: ci-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ci-server
+  template:
+    metadata:
+      labels:
+        app: ci-server
+    spec:
+      containers:
+      - name: ci-server
+        image: 542468166994.dkr.ecr.ap-northeast-2.amazonaws.com/sample-server:v2
+        # image: jungbox/sample-server:v3
+        ports:
+        - containerPort: 3000
