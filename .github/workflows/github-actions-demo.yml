@@ -35,8 +35,8 @@ jobs:
         docker buildx create --name mybuilder --use
         docker buildx inspect --bootstrap
         
-        # 멀티 플랫폼 빌드 및 푸시
+        # 단일 플랫폼 빌드 및 푸시(linux/amd64만 지정)
         docker buildx build \
-          --platform linux/amd64,linux/arm64 \
+          --platform linux/amd64 \
           -t 542468166994.dkr.ecr.ap-southeast-2.amazonaws.com/sample-server:v2 \
           --push .
