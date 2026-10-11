@@ -48,7 +48,7 @@ jobs:
         SSH_PRIVATE_KEY: ${{ secrets.AWS_SSH_KEY }}
       run: |
         # SSH 키 설정
-        echo "$SSH_PRIVATE_KEY" > private_key.pem
+        echo "$SSH_PRIVATE_KEY" > ssh_key.pem
         chmod 600 ssh_key.pem
         
         # EC2에 접속하여 컨테이너 업데이트 실행
